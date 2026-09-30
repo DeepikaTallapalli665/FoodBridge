@@ -1,6 +1,7 @@
 package com.foodbridge.notification.service.impl;
 
 import java.time.LocalDateTime;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,13 +22,16 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public NotificationServiceImpl(
+            UserRepository userRepository,
             NotificationRepository notificationRepository,
-            UserRepository userRepository) {
+            SimpMessagingTemplate messagingTemplate) {
 
-        this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.notificationRepository = notificationRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Override
@@ -49,6 +53,10 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setCreatedAt(LocalDateTime.now());
 
         notificationRepository.save(notification);
+
+        messagingTemplate.convertAndSend(
+                "/queue/notifications/" + userId,
+                notification);
     }
 
     @Override
