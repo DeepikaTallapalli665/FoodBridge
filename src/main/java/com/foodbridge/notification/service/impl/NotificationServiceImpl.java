@@ -52,12 +52,18 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setRead(false);
         notification.setCreatedAt(LocalDateTime.now());
 
+
         notificationRepository.save(notification);
 
-        messagingTemplate.convertAndSend(
-                "/queue/notifications/" + userId,
-                notification);
-    }
+        System.out.println(
+            "SENDING WEBSOCKET NOTIFICATION TO: " + user.getEmail()
+        );
+
+        messagingTemplate.convertAndSendToUser(
+            user.getEmail(),
+            "/queue/notifications",
+            notification);
+        }
 
     @Override
     public List<NotificationResponse> getMyNotifications(String email) {
