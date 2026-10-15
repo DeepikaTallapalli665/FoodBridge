@@ -1,3 +1,4 @@
+
 package com.foodbridge.notification.controller;
 
 import java.util.List;
@@ -47,6 +48,18 @@ public class NotificationController {
         return ResponseEntity.ok(responses);
     }
 
+    @GetMapping("/unread/count")
+    public ResponseEntity<Long> getMyUnreadNotificationCount(
+            Authentication authentication) {
+
+        String email = authentication.getName();
+
+        long count =
+                notificationService.getMyUnreadNotificationCount(email);
+
+        return ResponseEntity.ok(count);
+    }
+
     @PatchMapping("/{notificationId}/read")
     public ResponseEntity<String> markAsRead(
             @PathVariable Long notificationId,
@@ -57,5 +70,16 @@ public class NotificationController {
         notificationService.markAsRead(notificationId, email);
 
         return ResponseEntity.ok("Notification marked as read");
+    }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<String> markAllAsRead(
+            Authentication authentication) {
+
+        String email = authentication.getName();
+
+        notificationService.markAllAsRead(email);
+
+        return ResponseEntity.ok("All notifications marked as read");
     }
 }

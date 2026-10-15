@@ -1,3 +1,4 @@
+
 package com.foodbridge.donation.service.impl;
 
 import java.time.LocalDateTime;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.foodbridge.common.enums.DonationStatus;
 import com.foodbridge.common.enums.NotificationType;
 import com.foodbridge.common.enums.Role;
+import com.foodbridge.common.enums.UserStatus;
 import com.foodbridge.donation.dto.request.DonationRequest;
 import com.foodbridge.donation.dto.response.DonationResponse;
 import com.foodbridge.donation.entity.Donation;
@@ -60,11 +62,41 @@ public class DonationServiceImpl implements DonationService {
         donation.setQuantityUnit(request.getQuantityUnit());
         donation.setPickupLocation(request.getPickupLocation());
         donation.setExpiryTime(request.getExpiryTime());
+        donation.setLatitude(request.getLatitude());
+        donation.setLongitude(request.getLongitude());
         donation.setDonor(donor);
         donation.setStatus(DonationStatus.AVAILABLE);
         donation.setCreatedAt(LocalDateTime.now());
 
         donation = donationRepository.save(donation);
+
+        // Notify all active RECEIVER and NGO users.
+        List<User> receivers =
+                userRepository.findByRoleAndStatus(
+                        Role.RECEIVER,
+                        UserStatus.ACTIVE);
+
+        List<User> ngos =
+                userRepository.findByRoleAndStatus(
+                        Role.NGO,
+                        UserStatus.ACTIVE);
+
+        String message = "New food donation available: "
+                + donation.getFoodName();
+
+        for (User receiver : receivers) {
+            notificationService.createNotification(
+                    receiver.getId(),
+                    message,
+                    NotificationType.DONATION_CREATED);
+        }
+
+        for (User ngo : ngos) {
+            notificationService.createNotification(
+                    ngo.getId(),
+                    message,
+                    NotificationType.DONATION_CREATED);
+        }
 
         return mapToResponse(donation);
     }
@@ -87,7 +119,6 @@ public class DonationServiceImpl implements DonationService {
 
         for (Donation donation : donations) {
 
-            // Check if donation has expired
             if (!donation.getExpiryTime().isAfter(now)) {
 
                 donation.setStatus(DonationStatus.EXPIRED);
@@ -97,8 +128,7 @@ public class DonationServiceImpl implements DonationService {
                 notificationService.createNotification(
                         donation.getDonor().getId(),
                         "Your donation has expired",
-                        NotificationType.DONATION_EXPIRED
-                );
+                        NotificationType.DONATION_EXPIRED);
 
                 continue;
             }
@@ -129,7 +159,7 @@ public class DonationServiceImpl implements DonationService {
                                 "Recipient not found"));
 
         if (recipient.getRole() != Role.RECEIVER &&
-            recipient.getRole() != Role.NGO) {
+                recipient.getRole() != Role.NGO) {
 
             throw new InvalidRoleException(
                     "Only RECEIVER or NGO can claim a donation");
@@ -148,7 +178,7 @@ public class DonationServiceImpl implements DonationService {
                     "Donation is no longer available");
         }
 
-        // Check expiry before claiming
+        // Check expiry before claiming.
         if (!donation.getExpiryTime()
                 .isAfter(LocalDateTime.now())) {
 
@@ -159,8 +189,7 @@ public class DonationServiceImpl implements DonationService {
             notificationService.createNotification(
                     donation.getDonor().getId(),
                     "Your donation has expired",
-                    NotificationType.DONATION_EXPIRED
-            );
+                    NotificationType.DONATION_EXPIRED);
 
             throw new BadRequestException(
                     "Donation has expired");
@@ -171,77 +200,123 @@ public class DonationServiceImpl implements DonationService {
 
         donation = donationRepository.save(donation);
 
-        // Notify donor that the donation was claimed
+        // Notify donor that the donation was claimed.
         notificationService.createNotification(
                 donation.getDonor().getId(),
                 "Your donation has been claimed",
-                NotificationType.DONATION_CLAIMED
-        );
+                NotificationType.DONATION_CLAIMED);
 
         return mapToResponse(donation);
     }
+
+    // =========================================================
+    // SEARCH DONATIONS
+    // =========================================================
+
+
     @Override
     public List<DonationResponse> searchDonations(
             String foodName,
-            String pickupLocation) {
+            String pickupLocation,
+            LocalDateTime expiryFrom,
+            LocalDateTime expiryTo,
+            Double latitude,
+            Double longitude,
+            Double radiusKm) {
 
-        List<Donation> donations;
+        String normalizedFoodName =
+                (foodName == null || foodName.isBlank())
+                        ? null : foodName.trim();
 
-        if (foodName != null && !foodName.isBlank()
-                && pickupLocation != null && !pickupLocation.isBlank()) {
+        String normalizedPickupLocation =
+                (pickupLocation == null || pickupLocation.isBlank())
+                        ? null : pickupLocation.trim();
 
-            donations = donationRepository
-                    .findByStatusAndFoodNameContainingIgnoreCaseAndPickupLocationContainingIgnoreCase(
-                            DonationStatus.AVAILABLE,
-                            foodName,
-                            pickupLocation);
-
-        } else if (foodName != null && !foodName.isBlank()) {
-
-            donations = donationRepository
-                    .findByStatusAndFoodNameContainingIgnoreCase(
-                            DonationStatus.AVAILABLE,
-                            foodName);
-
-        } else if (pickupLocation != null && !pickupLocation.isBlank()) {
-
-            donations = donationRepository
-                    .findByStatusAndPickupLocationContainingIgnoreCase(
-                            DonationStatus.AVAILABLE,
-                            pickupLocation);
-
-        } else {
-
-            donations = donationRepository
-                    .findByStatus(DonationStatus.AVAILABLE);
-        }
+        List<Donation> donations =
+                donationRepository.searchDonations(
+                        DonationStatus.AVAILABLE,
+                        normalizedFoodName,
+                        normalizedPickupLocation,
+                        expiryFrom,
+                        expiryTo);
 
         List<DonationResponse> responses = new ArrayList<>();
-
         LocalDateTime now = LocalDateTime.now();
 
         for (Donation donation : donations) {
 
-            if (!donation.getExpiryTime().isAfter(now)) {
+            if (donation.getExpiryTime() == null
+                    || !donation.getExpiryTime().isAfter(now)) {
 
                 donation.setStatus(DonationStatus.EXPIRED);
-
                 donationRepository.save(donation);
 
                 notificationService.createNotification(
                         donation.getDonor().getId(),
                         "Your donation has expired",
-                        NotificationType.DONATION_EXPIRED
-                );
+                        NotificationType.DONATION_EXPIRED);
 
                 continue;
+            }
+
+            // Apply distance filtering only when all distance
+            // parameters are supplied.
+            if (latitude != null
+                    && longitude != null
+                    && radiusKm != null) {
+
+                if (donation.getLatitude() == null
+                        || donation.getLongitude() == null) {
+                    continue;
+                }
+
+                double distance = calculateDistanceKm(
+                        latitude,
+                        longitude,
+                        donation.getLatitude(),
+                        donation.getLongitude());
+
+                if (distance > radiusKm) {
+                    continue;
+                }
             }
 
             responses.add(mapToResponse(donation));
         }
 
         return responses;
-    }    // =========================================================
+    }
+
+    private double calculateDistanceKm(
+            double latitude1,
+            double longitude1,
+            double latitude2,
+            double longitude2) {
+
+        final double earthRadiusKm = 6371.0;
+
+        double latDistance =
+                Math.toRadians(latitude2 - latitude1);
+
+        double lonDistance =
+                Math.toRadians(longitude2 - longitude1);
+
+        double a =
+                Math.sin(latDistance / 2)
+                * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(latitude1))
+                * Math.cos(Math.toRadians(latitude2))
+                * Math.sin(lonDistance / 2)
+                * Math.sin(lonDistance / 2);
+
+        double c = 2 * Math.atan2(
+                Math.sqrt(a),
+                Math.sqrt(1 - a));
+
+        return earthRadiusKm * c;
+    }
+
+    // =========================================================
     // COMPLETE DONATION
     // =========================================================
 
@@ -267,24 +342,81 @@ public class DonationServiceImpl implements DonationService {
         }
 
         if (donation.getRecipient() == null ||
-            !donation.getRecipient().getId()
-                    .equals(recipient.getId())) {
+                !donation.getRecipient().getId()
+                        .equals(recipient.getId())) {
 
             throw new BadRequestException(
                     "Only the recipient who claimed this donation "
-                    + "can complete it");
+                            + "can complete it");
         }
 
         donation.setStatus(DonationStatus.COMPLETED);
 
         donation = donationRepository.save(donation);
 
-        // Notify donor that the donation was completed
+        // Notify donor that the donation was completed.
         notificationService.createNotification(
                 donation.getDonor().getId(),
                 "Your donation has been completed",
-                NotificationType.DONATION_COMPLETED
-        );
+                NotificationType.DONATION_COMPLETED);
+
+        return mapToResponse(donation);
+    }
+
+    // =========================================================
+    // CANCEL DONATION
+    // =========================================================
+
+    @Override
+    public DonationResponse cancelDonation(
+            Long donationId,
+            String email) {
+
+        Donation donation = donationRepository.findById(donationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Donation not found"));
+
+        User donor = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Donor not found"));
+
+        // Only the donor who created the donation can cancel it.
+        if (!donation.getDonor().getId()
+                .equals(donor.getId())) {
+
+            throw new BadRequestException(
+                    "Only the donor who created the donation can cancel it");
+        }
+
+        // Only AVAILABLE donations can be cancelled.
+        if (donation.getStatus() != DonationStatus.AVAILABLE) {
+
+            throw new BadRequestException(
+                    "Only available donations can be cancelled");
+        }
+
+        // Check expiry before cancellation.
+        if (!donation.getExpiryTime()
+                .isAfter(LocalDateTime.now())) {
+
+            donation.setStatus(DonationStatus.EXPIRED);
+
+            donationRepository.save(donation);
+
+            notificationService.createNotification(
+                    donation.getDonor().getId(),
+                    "Your donation has expired",
+                    NotificationType.DONATION_EXPIRED);
+
+            throw new BadRequestException(
+                    "Donation has expired");
+        }
+
+        donation.setStatus(DonationStatus.CANCELLED);
+
+        donation = donationRepository.save(donation);
 
         return mapToResponse(donation);
     }
@@ -394,6 +526,8 @@ public class DonationServiceImpl implements DonationService {
         response.setPickupLocation(donation.getPickupLocation());
         response.setExpiryTime(donation.getExpiryTime());
         response.setStatus(donation.getStatus());
+        response.setLatitude(donation.getLatitude());
+        response.setLongitude(donation.getLongitude());
 
         if (donation.getDonor() != null) {
             response.setDonorId(

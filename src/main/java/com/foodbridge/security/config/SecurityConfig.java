@@ -1,4 +1,3 @@
-
 package com.foodbridge.security.config;
 
 import org.springframework.context.annotation.Bean;
@@ -47,8 +46,16 @@ public class SecurityConfig {
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/ws"
-
                 ).permitAll()
+
+
+                // =================================================
+                // ADMIN ENDPOINTS - ADMIN ONLY
+                // =================================================
+
+                .requestMatchers(
+                    "/api/admin/**"
+                ).hasRole("ADMIN")
 
 
                 // =================================================
@@ -58,6 +65,16 @@ public class SecurityConfig {
                 .requestMatchers(
                     HttpMethod.POST,
                     "/api/donations"
+                ).hasRole("DONOR")
+
+
+                // =================================================
+                // DONATION CANCELLATION - DONOR ONLY
+                // =================================================
+
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/donations/*/cancel"
                 ).hasRole("DONOR")
 
 
@@ -136,4 +153,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-

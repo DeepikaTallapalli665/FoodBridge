@@ -1,7 +1,10 @@
+
 package com.foodbridge.donation.dto.request;
 
 import java.time.LocalDateTime;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,6 +31,14 @@ public class DonationRequest {
     @NotNull(message = "Expiry time is required")
     @Future(message = "Expiry time must be in the future")
     private LocalDateTime expiryTime;
+
+    @DecimalMin(value = "-90.0", message = "Latitude must be at least -90")
+    @DecimalMax(value = "90.0", message = "Latitude must not exceed 90")
+    private Double latitude;
+
+    @DecimalMin(value = "-180.0", message = "Longitude must be at least -180")
+    @DecimalMax(value = "180.0", message = "Longitude must not exceed 180")
+    private Double longitude;
 
     public String getFoodName() {
         return foodName;
@@ -75,5 +86,21 @@ public class DonationRequest {
 
     public void setExpiryTime(LocalDateTime expiryTime) {
         this.expiryTime = expiryTime;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 }

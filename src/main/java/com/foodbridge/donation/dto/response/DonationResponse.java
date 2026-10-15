@@ -1,3 +1,4 @@
+
 package com.foodbridge.donation.dto.response;
 
 import java.time.LocalDateTime;
@@ -17,10 +18,8 @@ public class DonationResponse {
     private Long donorId;
     private LocalDateTime createdAt;
     private Long recipientId;
-  
-    public void setRecipientId(Long recipientId) {
-        this.recipientId = recipientId;
-    }
+    private Double latitude;
+    private Double longitude;
 
     public Long getId() {
         return id;
@@ -89,13 +88,17 @@ public class DonationResponse {
     public Long getDonorId() {
         return donorId;
     }
+
+    public void setDonorId(Long donorId) {
+        this.donorId = donorId;
+    }
+
     public Long getRecipientId() {
         return recipientId;
     }
 
-
-    public void setDonorId(Long donorId) {
-        this.donorId = donorId;
+    public void setRecipientId(Long recipientId) {
+        this.recipientId = recipientId;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -104,5 +107,21 @@ public class DonationResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 }

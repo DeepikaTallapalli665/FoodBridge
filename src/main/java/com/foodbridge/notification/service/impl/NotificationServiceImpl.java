@@ -1,11 +1,13 @@
+
 package com.foodbridge.notification.service.impl;
 
 import java.time.LocalDateTime;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.foodbridge.common.enums.NotificationType;
 import com.foodbridge.exception.BadRequestException;
@@ -18,6 +20,7 @@ import com.foodbridge.user.entity.User;
 import com.foodbridge.user.repository.UserRepository;
 
 @Service
+@Transactional(readOnly = true)
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
@@ -35,6 +38,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
     public void createNotification(
             Long userId,
             String message,
@@ -45,32 +49,25 @@ public class NotificationServiceImpl implements NotificationService {
                         new ResourceNotFoundException("User not found"));
 
         Notification notification = new Notification();
-
         notification.setUser(user);
         notification.setMessage(message);
         notification.setType(type);
         notification.setRead(false);
         notification.setCreatedAt(LocalDateTime.now());
 
-
-        notificationRepository.save(notification);
-
-        System.out.println(
-            "SENDING WEBSOCKET NOTIFICATION TO: " + user.getEmail()
-        );
+        Notification savedNotification =
+                notificationRepository.save(notification);
 
         messagingTemplate.convertAndSendToUser(
-            user.getEmail(),
-            "/queue/notifications",
-            notification);
-        }
+                user.getEmail(),
+                "/queue/notifications",
+                savedNotification);
+    }
 
     @Override
     public List<NotificationResponse> getMyNotifications(String email) {
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
+        User user = getUserByEmail(email);
 
         List<Notification> notifications =
                 notificationRepository.findByUserOrderByCreatedAtDesc(user);
@@ -87,9 +84,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public List<NotificationResponse> getMyUnreadNotifications(String email) {
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
+        User user = getUserByEmail(email);
 
         List<Notification> notifications =
                 notificationRepository
@@ -105,6 +100,15 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public long getMyUnreadNotificationCount(String email) {
+
+        User user = getUserByEmail(email);
+
+        return notificationRepository.countByUserAndIsReadFalse(user);
+    }
+
+    @Override
+    @Transactional
     public void markAsRead(Long notificationId, String email) {
 
         Notification notification = notificationRepository
@@ -118,15 +122,29 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         notification.setRead(true);
-
         notificationRepository.save(notification);
+    }
+
+    @Override
+    @Transactional
+    public void markAllAsRead(String email) {
+
+        User user = getUserByEmail(email);
+
+        notificationRepository.markAllAsReadByUser(user);
+    }
+
+    private User getUserByEmail(String email) {
+
+        return userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
     }
 
     private NotificationResponse mapToResponse(
             Notification notification) {
 
         NotificationResponse response = new NotificationResponse();
-
         response.setId(notification.getId());
         response.setMessage(notification.getMessage());
         response.setType(notification.getType());

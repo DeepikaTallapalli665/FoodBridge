@@ -1,6 +1,7 @@
 
 package com.foodbridge.donation.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.foodbridge.donation.dto.request.DonationRequest;
@@ -24,9 +25,21 @@ public interface DonationService {
             Long donationId,
             String email
     );
+
+    DonationResponse cancelDonation(
+            Long donationId,
+            String email
+    );
+
     List<DonationResponse> searchDonations(
             String foodName,
-            String pickupLocation);
+            String pickupLocation,
+            LocalDateTime expiryFrom,
+            LocalDateTime expiryTo,
+            Double latitude,
+            Double longitude,
+            Double radiusKm
+    );
 
     // Donation history
     List<DonationResponse> getMyDonations(String email);
