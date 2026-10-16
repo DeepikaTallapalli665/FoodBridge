@@ -57,6 +57,9 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification savedNotification =
                 notificationRepository.save(notification);
+        System.out.println(
+        	    "SENDING WEBSOCKET NOTIFICATION TO: " + user.getEmail()
+        	);
 
         messagingTemplate.convertAndSendToUser(
                 user.getEmail(),
