@@ -1,6 +1,7 @@
 package com.foodbridge.admin.config;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +11,7 @@ import com.foodbridge.user.entity.User;
 import com.foodbridge.user.repository.UserRepository;
 
 @Component
+@Profile("admin-init")
 public class AdminDataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;

@@ -3,6 +3,7 @@ package com.foodbridge.donation.scheduler;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import com.foodbridge.donation.repository.DonationRepository;
 import com.foodbridge.notification.service.NotificationService;
 
 @Component
+@Profile("scheduler")
 public class DonationExpirationScheduler {
 
     private final DonationRepository donationRepository;
