@@ -41,6 +41,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
+        // No JWT → continue normally.
+        // Spring Security will decide whether the endpoint is public
+        // or requires authentication.
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -87,6 +90,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         return path.equals("/api/users/register")
                 || path.equals("/api/auth/login")
-                || path.equals("/api/auth/verify-otp");
+                || path.equals("/api/auth/verify-otp")
+
+                // Swagger UI
+                || path.equals("/swagger-ui.html")
+                || path.startsWith("/swagger-ui/")
+
+                // OpenAPI documentation
+                || path.equals("/v3/api-docs")
+                || path.startsWith("/v3/api-docs/");
     }
 }
