@@ -42,24 +42,29 @@ public class SecurityConfig {
                     "/api/users/register",
                     "/api/auth/login",
                     "/api/auth/verify-otp",
+
+                    // Swagger UI
                     "/swagger-ui.html",
                     "/swagger-ui/**",
+
+                    // OpenAPI documentation
+                    "/v3/api-docs",
                     "/v3/api-docs/**",
+
+                    // WebSocket
                     "/ws"
                 ).permitAll()
 
-
                 // =================================================
-                // ADMIN ENDPOINTS - ADMIN ONLY
+                // ADMIN ENDPOINTS
                 // =================================================
 
                 .requestMatchers(
                     "/api/admin/**"
                 ).hasRole("ADMIN")
 
-
                 // =================================================
-                // DONATION CREATION - DONOR ONLY
+                // DONATION CREATION
                 // =================================================
 
                 .requestMatchers(
@@ -67,9 +72,8 @@ public class SecurityConfig {
                     "/api/donations"
                 ).hasRole("DONOR")
 
-
                 // =================================================
-                // DONATION CANCELLATION - DONOR ONLY
+                // DONATION CANCELLATION
                 // =================================================
 
                 .requestMatchers(
@@ -77,9 +81,8 @@ public class SecurityConfig {
                     "/api/donations/*/cancel"
                 ).hasRole("DONOR")
 
-
                 // =================================================
-                // DONOR HISTORY - DONOR ONLY
+                // DONOR HISTORY
                 // =================================================
 
                 .requestMatchers(
@@ -87,9 +90,8 @@ public class SecurityConfig {
                     "/api/donations/my"
                 ).hasRole("DONOR")
 
-
                 // =================================================
-                // VIEW AVAILABLE DONATIONS - ALL AUTHENTICATED
+                // VIEW AVAILABLE DONATIONS
                 // =================================================
 
                 .requestMatchers(
@@ -97,9 +99,8 @@ public class SecurityConfig {
                     "/api/donations"
                 ).authenticated()
 
-
                 // =================================================
-                // ACCEPT / CLAIM - RECEIVER OR NGO
+                // ACCEPT / CLAIM
                 // =================================================
 
                 .requestMatchers(
@@ -107,9 +108,8 @@ public class SecurityConfig {
                     "/api/donations/*/accept"
                 ).hasAnyRole("RECEIVER", "NGO")
 
-
                 // =================================================
-                // CLAIMED HISTORY - RECEIVER OR NGO
+                // CLAIMED HISTORY
                 // =================================================
 
                 .requestMatchers(
@@ -117,9 +117,8 @@ public class SecurityConfig {
                     "/api/donations/claimed"
                 ).hasAnyRole("RECEIVER", "NGO")
 
-
                 // =================================================
-                // COMPLETE DONATION - RECEIVER OR NGO
+                // COMPLETE DONATION
                 // =================================================
 
                 .requestMatchers(
@@ -127,9 +126,8 @@ public class SecurityConfig {
                     "/api/donations/*/complete"
                 ).hasAnyRole("RECEIVER", "NGO")
 
-
                 // =================================================
-                // COMPLETED HISTORY - RECEIVER OR NGO
+                // COMPLETED HISTORY
                 // =================================================
 
                 .requestMatchers(
@@ -137,9 +135,8 @@ public class SecurityConfig {
                     "/api/donations/completed"
                 ).hasAnyRole("RECEIVER", "NGO")
 
-
                 // =================================================
-                // ALL OTHER ENDPOINTS
+                // EVERYTHING ELSE
                 // =================================================
 
                 .anyRequest().authenticated()
